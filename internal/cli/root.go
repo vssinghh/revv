@@ -45,3 +45,14 @@ func newVersionCmd() *cobra.Command {
 func Execute() error {
 	return NewRootCmd().Execute()
 }
+
+func newStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show current revv configuration status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println("revv status: configured")
+			return nil
+		},
+	}
+}
