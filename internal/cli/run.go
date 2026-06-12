@@ -105,7 +105,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 		durStr := fmt.Sprintf("(%.1fs)", r.Duration.Seconds())
 		if r.Skipped {
-			durStr = "(manual)"
+			durStr = "(no commands)"
 		}
 
 		fmt.Printf("  %s %-40s %-10s %-6s %s\n", icon, r.Category+"/"+r.Name, r.Priority, status, durStr)

@@ -89,10 +89,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create .revv directory: %w", err)
 	}
 
-	// Always ensure a manual category (.revv/manual/) is generated
-	manualDir := filepath.Join(revvDir, "manual")
-	if err := os.MkdirAll(manualDir, 0755); err != nil {
-		return fmt.Errorf("failed to create manual category directory: %w", err)
+	// Always ensure a visual category (.revv/visual/) is generated
+	visualDir := filepath.Join(revvDir, "visual")
+	if err := os.MkdirAll(visualDir, 0755); err != nil {
+		return fmt.Errorf("failed to create visual category directory: %w", err)
 	}
 
 	var writtenFiles []string

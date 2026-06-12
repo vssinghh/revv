@@ -136,10 +136,11 @@ func RunTest(ctx context.Context, executor Executor, category, name, content str
 		Priority: parsed.Priority,
 	}
 
-	// Skip manual tests
-	if parsed.IsManual {
+	// Skip tests with no commands
+	if parsed.NoCommands {
 		result.Skipped = true
 		result.Passed = true
+		result.Error = "no commands to execute"
 		return result
 	}
 

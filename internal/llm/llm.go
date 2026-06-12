@@ -110,11 +110,11 @@ func GenerateConfig(ctx context.Context, modelName string, repoContext map[strin
 					},
 				},
 				{
-					Category: "manual",
-					Name:     "manual_test",
-					TestMD:   "# Manual Verification\n## Description\nPerform manual sanity check.\n## Priority\nLow\n## Commands\n./bin/revv --help\n## Expected Output\nUsage of revv:\n",
+					Category: "visual",
+					Name:     "visual_test",
+					TestMD:   "# Visual Verification\n## Description\nPerform visual sanity check.\n## Priority\nLow\n## Commands\n./bin/revv --help\n## Expected Output\nUsage of revv:\n",
 					Helpers: map[string]string{
-						"manual_helper.sh": "#!/bin/sh\necho manual\n",
+						"visual_helper.sh": "#!/bin/sh\necho visual\n",
 					},
 				},
 				{

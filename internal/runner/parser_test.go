@@ -35,8 +35,8 @@ Exit code 0. Output ends with "PASS: compilation successful".
 		t.Errorf("expected priority 'blocking', got %q", pt.Priority)
 	}
 
-	if pt.IsManual {
-		t.Error("expected IsManual=false for test with commands")
+	if pt.NoCommands {
+		t.Error("expected NoCommands=false for test with commands")
 	}
 
 	if pt.Commands == "" {
@@ -52,7 +52,7 @@ Exit code 0. Output ends with "PASS: compilation successful".
 	}
 }
 
-func TestParseTestMD_ManualTest(t *testing.T) {
+func TestParseTestMD_NoCommandsTest(t *testing.T) {
 	content := `## Description
 Manually verify the UI looks correct.
 
@@ -68,8 +68,8 @@ Reviewer confirms visual correctness.
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !pt.IsManual {
-		t.Error("expected IsManual=true for test without commands")
+	if !pt.NoCommands {
+		t.Error("expected NoCommands=true for test without commands")
 	}
 
 	if pt.Priority != "warning" {
@@ -133,8 +133,8 @@ PASS
 		t.Error("expected non-empty commands even without code block")
 	}
 
-	if pt.IsManual {
-		t.Error("expected IsManual=false")
+	if pt.NoCommands {
+		t.Error("expected NoCommands=false")
 	}
 }
 

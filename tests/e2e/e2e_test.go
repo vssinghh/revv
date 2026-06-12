@@ -354,15 +354,15 @@ func TestTier1FeatureCoverage(t *testing.T) {
 		}
 	})
 
-	t.Run("e2e_f4_manual_tests_created", func(t *testing.T) {
+	t.Run("e2e_f4_visual_tests_created", func(t *testing.T) {
 		dir := setupMockRepo(t, nil, true)
 		res := runRevv(t, dir, []string{"GEMINI_API_KEY=test-key"}, "init")
 		if res.ExitCode != 0 {
 			t.Fatalf("expected success: %d", res.ExitCode)
 		}
-		manualDir := filepath.Join(dir, ".revv", "manual")
-		if info, err := os.Stat(manualDir); err != nil || !info.IsDir() {
-			t.Errorf("expected manual tests dir %s to exist as directory: %v", manualDir, err)
+		visualDir := filepath.Join(dir, ".revv", "visual")
+		if info, err := os.Stat(visualDir); err != nil || !info.IsDir() {
+			t.Errorf("expected visual tests dir %s to exist as directory: %v", visualDir, err)
 		}
 	})
 
@@ -680,7 +680,7 @@ func TestTier2BoundaryCorner(t *testing.T) {
 			t.Fatalf("failed to read .revv: %v", err)
 		}
 		for _, f := range files {
-			if f.IsDir() && f.Name() != "manual" && f.Name() != "helpers" {
+			if f.IsDir() && f.Name() != "visual" && f.Name() != "helpers" {
 				t.Errorf("expected no other test category directories, but found: %s", f.Name())
 			}
 		}
@@ -938,8 +938,8 @@ func TestTier4RealWorld(t *testing.T) {
 		if res.ExitCode != 0 {
 			t.Fatalf("expected success: %d", res.ExitCode)
 		}
-		// Standard rich configuration generates: unit, integration, lint, manual, build
-		categories := []string{"unit", "integration", "lint", "manual", "build"}
+		// Standard rich configuration generates: unit, integration, lint, visual, build
+		categories := []string{"unit", "integration", "lint", "visual", "build"}
 		for _, cat := range categories {
 			catPath := filepath.Join(dir, ".revv", cat)
 			if info, err := os.Stat(catPath); err != nil || !info.IsDir() {

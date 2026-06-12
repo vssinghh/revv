@@ -172,7 +172,7 @@ func ConstructPrompt(repoContext map[string]string, existingConfig map[string]st
 	var sb strings.Builder
 
 	// 1. Specific persona
-	sb.WriteString(`You are a senior QA engineer and CI/CD specialist. Your job is to configure automated and manual PR review tests for a repository using a tool called "revv".
+	sb.WriteString(`You are a senior QA engineer and CI/CD specialist. Your job is to configure automated and visual PR review tests for a repository using a tool called "revv".
 You have deep expertise in writing tests that are:
 - Executable: every command must be a real shell command, not pseudocode
 - Specific: assertions check concrete output, not vague descriptions
@@ -316,9 +316,9 @@ For each core functionality, you MUST generate at least one **functional validat
 3. **Tests**: Array of {category, name, test_md, action, helpers} objects. Each test_md MUST contain these sections: ## Description, ## Priority, ## Commands, ## Expected Output.
 
 Rules:
-- A "manual" category MUST always be generated (for tests requiring human judgment: UI, UX, visual checks)
+- A "visual" category MUST always be generated (for tests requiring visual verification: UI rendering, layout, styling, screenshots)
 - Test names must be lowercase_snake_case
-- Categories should be meaningful (unit, integration, build, lint, security, manual — not "test1", "test2")
+- Categories should be meaningful (unit, integration, build, lint, security, visual — not "test1", "test2")
 - Generate at least 5 tests across at least 3 categories
 - Commands in test_md must be real, executable shell commands with inline assertions
 - Do NOT generate tests that duplicate existing test coverage (see "Existing Test Coverage" above)

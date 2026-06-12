@@ -11,7 +11,7 @@ type ParsedTest struct {
 	Priority    string // "blocking" or "warning"
 	Commands    string // shell commands to execute
 	Expected    string // expected output description
-	IsManual    bool   // true if test has no executable commands
+	NoCommands  bool   // true if test has no executable commands
 }
 
 // ParseTestMD parses a test.md file into its structured sections.
@@ -46,7 +46,7 @@ func ParseTestMD(content string) (*ParsedTest, error) {
 		pt.Expected = strings.TrimSpace(exp)
 	}
 
-	pt.IsManual = pt.Commands == ""
+	pt.NoCommands = pt.Commands == ""
 
 	return pt, nil
 }

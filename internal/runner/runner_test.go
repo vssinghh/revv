@@ -29,10 +29,10 @@ func TestDiscoverTests(t *testing.T) {
 	os.MkdirAll(testDir, 0755)
 	os.WriteFile(filepath.Join(testDir, "test.md"), []byte("## Description\ntest"), 0644)
 
-	// Create another: .revv/manual/ui_check/test.md
-	manualDir := filepath.Join(dir, "manual", "ui_check")
-	os.MkdirAll(manualDir, 0755)
-	os.WriteFile(filepath.Join(manualDir, "test.md"), []byte("## Description\nmanual test"), 0644)
+	// Create another: .revv/visual/ui_check/test.md
+	visualDir := filepath.Join(dir, "visual", "ui_check")
+	os.MkdirAll(visualDir, 0755)
+	os.WriteFile(filepath.Join(visualDir, "test.md"), []byte("## Description\nvisual test"), 0644)
 
 	// Non-test files should be ignored
 	os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte("FROM golang"), 0644)
@@ -55,7 +55,7 @@ func TestTestInfo(t *testing.T) {
 		wantName string
 	}{
 		{"/repo/.revv", "/repo/.revv/unit/build_check/test.md", "unit", "build_check"},
-		{"/repo/.revv", "/repo/.revv/manual/ui_check/test.md", "manual", "ui_check"},
+		{"/repo/.revv", "/repo/.revv/visual/ui_check/test.md", "visual", "ui_check"},
 		{"/repo/.revv", "/repo/.revv/integration/api_health/test.md", "integration", "api_health"},
 	}
 
@@ -131,20 +131,20 @@ make build
 	}
 }
 
-func TestRunTest_ManualSkipped(t *testing.T) {
+func TestRunTest_NoCommandsSkipped(t *testing.T) {
 	executor := &mockExecutor{} // should never be called
 
 	content := `## Description
-Manual UI check.
+Visual UI check with no commands.
 
 ## Priority
 warning
 `
 
-	result := RunTest(context.Background(), executor, "manual", "ui_check", content)
+	result := RunTest(context.Background(), executor, "visual", "ui_check", content)
 
 	if !result.Skipped {
-		t.Error("expected manual test to be skipped")
+		t.Error("expected no-commands test to be skipped")
 	}
 	if !result.Passed {
 		t.Error("expected skipped test to be marked as passed")
@@ -185,7 +185,7 @@ func TestSummary(t *testing.T) {
 	results := []TestResult{
 		{Category: "build", Name: "compile", Priority: "blocking", Passed: true},
 		{Category: "lint", Name: "vet", Priority: "warning", Passed: false},
-		{Category: "manual", Name: "ui", Priority: "warning", Skipped: true, Passed: true},
+		{Category: "visual", Name: "ui", Priority: "warning", Skipped: true, Passed: true},
 	}
 
 	summary := Summary(results)
