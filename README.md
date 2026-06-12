@@ -1,10 +1,10 @@
 # revv
 
-LLM-powered PR review automation for open-source maintainers. Revv reads your repo, generates targeted tests using Gemini, and runs them in isolated Docker sandboxes — one container per test, fully parallel.
+LLM-powered PR review automation for open-source maintainers. Revv reads your repo, generates targeted tests using an LLM, and runs them in isolated Docker sandboxes — one container per test, fully parallel.
 
 ```bash
 # Onboard a repo
-export GEMINI_API_KEY="your-key"
+export REVV_API_KEY="your-key"
 revv init
 
 # Run generated tests
@@ -17,7 +17,7 @@ revv run --verbose
 
 Open-source maintainers review dozens of PRs weekly. Most lack automated QA beyond CI unit tests. Revv acts as an AI QA engineer:
 
-1. **`revv init`** — Reads your codebase (README, Makefile, go.mod, source files) and asks Gemini to generate a Dockerfile + test suite tailored to your project
+1. **`revv init`** — Reads your codebase (README, Makefile, go.mod, source files) and uses an LLM to generate a Dockerfile + test suite tailored to your project
 2. **`revv run`** — Builds a Docker image, spins up one container per test (full isolation), runs all tests in parallel, reports results
 
 No mocks. No fake backends. Tests exercise real product behavior in a sandboxed environment.
@@ -29,7 +29,7 @@ No mocks. No fake backends. Tests exercise real product behavior in a sandboxed 
 ### Prerequisites
 - **Go** 1.26.4+ ([download](https://go.dev/dl/))
 - **Docker** — Docker Desktop, Colima, or Rancher Desktop. If Docker is missing, revv will attempt to install Colima + Docker CLI automatically.
-- **Gemini API Key** — Get one from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **API Key** — Set `REVV_API_KEY` with your LLM provider key
 
 ### Build from Source
 
@@ -55,19 +55,19 @@ Generates a `.revv/` directory with a Dockerfile and test suite for your project
 
 ```bash
 cd your-repo
-export GEMINI_API_KEY="your-key"
+export REVV_API_KEY="your-key"
 revv init
 ```
 
 **What it does:**
 1. Collects context files (README, Makefile, go.mod, source code, existing tests)
-2. Sends them to Gemini 3.5 Flash with a structured prompt
+2. Sends them to the LLM with a structured prompt
 3. Parses the LLM response into files
 4. Creates a `revv/init` branch with the `.revv/` directory committed
 5. Prints instructions to push and open a PR
 
 **Flags:**
-- `--model <model>` — Gemini model to use (default: `gemini-3.5-flash`)
+- `--model <model>` — LLM model to use (default: `gemini-3.5-flash`)
 - `--verbose` — Show detailed output including collected files
 
 **Generated structure:**
@@ -119,7 +119,7 @@ revv run --verbose
 Checking Docker availability...
 
 Environment variables detected from tests:
-  GEMINI_API_KEY                 ✓ (host)
+  REVV_API_KEY                   ✓ (host)
 
 Building sandbox from .revv/Dockerfile...
 Running tests (parallel, isolated containers):
@@ -187,7 +187,7 @@ Tests reference env vars with standard `$VARIABLE` syntax. The runner:
 3. Checks host environment and `.env` files
 4. Passes matching variables into containers automatically
 
-No configuration needed — if your test uses `$GEMINI_API_KEY` and it's set on your machine, it gets forwarded.
+No configuration needed — if your test uses `$REVV_API_KEY` and it's set on your machine, it gets forwarded.
 
 ---
 
@@ -201,7 +201,7 @@ internal/
 │   ├── run.go                 → revv run implementation
 │   └── root.go                → Root command, global flags
 ├── adk/
-│   └── client.go              → LLM prompt construction + Gemini API call
+│   └── client.go              → LLM prompt construction + API call
 ├── llm/
 │   └── llm.go                 → JSON schema, response parsing, mock mode
 ├── runner/
@@ -267,7 +267,7 @@ Test changes by running `revv init` with a real API key and inspecting the outpu
 
 ### Mock LLM
 
-Set `REVV_MOCK_LLM=true` for Go unit tests and E2E tests. This avoids hitting the Gemini API during `go test`. The mock returns a fixed JSON response with realistic test data.
+Set `REVV_MOCK_LLM=true` for Go unit tests and E2E tests. This avoids hitting the LLM API during `go test`. The mock returns a fixed JSON response with realistic test data.
 
 **Important:** Mock mode is for internal development tests only. Generated `.revv/` tests must never use mocks.
 
@@ -277,7 +277,7 @@ Before submitting a PR:
 
 1. `go build ./cmd/revv` — must compile
 2. `go test ./...` — all unit + E2E tests pass
-3. `GEMINI_API_KEY=<key> ./bin/revv init` — generates valid `.revv/` config
+3. `REVV_API_KEY=<key> ./bin/revv init` — generates valid `.revv/` config
 4. `./bin/revv run --verbose` — generated tests pass in Docker sandbox
 
 ---
