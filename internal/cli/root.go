@@ -26,6 +26,7 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().Duration("timeout", 5*time.Minute, "Maximum execution timeout")
 
 	rootCmd.AddCommand(newInitCmd())
+	rootCmd.AddCommand(newRunCmd())
 	rootCmd.AddCommand(newVersionCmd())
 
 	return rootCmd
