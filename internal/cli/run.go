@@ -23,7 +23,7 @@ func newRunCmd() *cobra.Command {
 
 	cmd.Flags().String("category", "", "Run only tests in a specific category (e.g., 'unit', 'build')")
 	cmd.Flags().String("test", "", "Run a single test by path (e.g., 'unit/build_check')")
-	cmd.Flags().String("model", "gemini-3.1-flash-lite", "Gemini model for analysis (reserved for future use)")
+	cmd.Flags().String("model", "gemini-3.5-flash", "Gemini model for analysis (reserved for future use)")
 
 	return cmd
 }

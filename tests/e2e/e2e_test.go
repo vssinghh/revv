@@ -257,8 +257,8 @@ func TestTier1FeatureCoverage(t *testing.T) {
 		if res.ExitCode != 0 {
 			t.Errorf("expected exit code 0, got %d, stderr: %s", res.ExitCode, res.Stderr)
 		}
-		if !strings.Contains(res.Stdout, "Invoking Gemini (gemini-3.1-flash-lite)") {
-			t.Errorf("expected default model gemini-3.1-flash-lite to be used, got: %s", res.Stdout)
+		if !strings.Contains(res.Stdout, "Invoking Gemini (gemini-3.5-flash)") {
+			t.Errorf("expected default model gemini-3.5-flash to be used, got: %s", res.Stdout)
 		}
 	})
 
