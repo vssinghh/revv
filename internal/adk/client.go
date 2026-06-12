@@ -310,8 +310,14 @@ For each core functionality, you MUST generate at least one **functional validat
 - Validates the **output** is structurally correct (files created, data returned, state changed)
 - Asserts specific properties of the output (file exists, contains expected content, has correct format)
 
+Additionally, for each core functionality, generate at least one **error handling test** that:
+- Tests what happens when the functionality is called incorrectly (missing args, bad input, missing dependencies)
+- Verifies the error message is clear and actionable
+
+Do NOT skip a core functionality just because it requires external dependencies (e.g., Docker, databases). Instead, test its pre-condition checks and error paths (e.g., "what error does the user get if Docker is not installed?").
+
 ### Step 2: Generate Configuration
-1. **Dockerfile**: Sets up build and test dependencies for this project. Use the correct base image, install all required tools, and copy source code. Optimize for layer caching (copy dependency files first, then source).
+1. **Dockerfile**: Sets up build and test dependencies for this project. Use the correct base image matching the project's language version (e.g., for Go projects, read go.mod to find the exact Go version and use "golang:VERSION-alpine" where VERSION matches go.mod). Install all required tools and copy source code. Optimize for layer caching (copy dependency files first, then source).
 2. **Global helpers**: Array of {filename, content, action} objects. Reusable scripts shared across test categories.
 3. **Tests**: Array of {category, name, test_md, action, helpers} objects. Each test_md MUST contain these sections: ## Description, ## Priority, ## Commands, ## Expected Output.
 
