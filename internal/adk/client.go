@@ -30,7 +30,7 @@ type GeminiSchema struct {
 	Properties           map[string]GeminiSchema `json:"properties,omitempty"`
 	Required             []string                `json:"required,omitempty"`
 	Items                *GeminiSchema           `json:"items,omitempty"`
-
+	Enum                 []string                `json:"enum,omitempty"`
 	Description          string                  `json:"description,omitempty"`
 }
 
@@ -65,6 +65,12 @@ type ResponseBody struct {
 func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", c.model, c.apiKey)
 
+	actionField := GeminiSchema{
+		Type: "STRING",
+		Enum: []string{"add", "update", "keep", "delete"},
+		Description: "Action to perform: add (new item), update (modify existing), keep (no change), delete (remove)",
+	}
+
 	schema := &GeminiSchema{
 		Type: "OBJECT",
 		Properties: map[string]GeminiSchema{
@@ -76,8 +82,9 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 					Properties: map[string]GeminiSchema{
 						"filename": {Type: "STRING"},
 						"content":  {Type: "STRING"},
+						"action":   actionField,
 					},
-					Required: []string{"filename", "content"},
+					Required: []string{"filename", "content", "action"},
 				},
 			},
 			"tests": {
@@ -88,6 +95,7 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 						"category": {Type: "STRING"},
 						"name":     {Type: "STRING"},
 						"test_md":  {Type: "STRING"},
+						"action":   actionField,
 						"helpers": {
 							Type: "ARRAY",
 							Items: &GeminiSchema{
@@ -95,12 +103,13 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 								Properties: map[string]GeminiSchema{
 									"filename": {Type: "STRING"},
 									"content":  {Type: "STRING"},
+									"action":   actionField,
 								},
-								Required: []string{"filename", "content"},
+								Required: []string{"filename", "content", "action"},
 							},
 						},
 					},
-					Required: []string{"category", "name", "test_md"},
+					Required: []string{"category", "name", "test_md", "action"},
 				},
 			},
 		},
@@ -159,7 +168,7 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
-func ConstructPrompt(repoContext map[string]string) string {
+func ConstructPrompt(repoContext map[string]string, existingConfig map[string]string) string {
 	var sb strings.Builder
 	sb.WriteString("You are an expert software developer and system integrator. We are configuring a testing tool called `revv` for this repository.\n")
 	sb.WriteString("Here is the context of the repository gathered from files:\n\n")
@@ -168,15 +177,34 @@ func ConstructPrompt(repoContext map[string]string) string {
 		sb.WriteString(content)
 		sb.WriteString("\n\n")
 	}
+
+	if len(existingConfig) > 0 {
+		sb.WriteString("\n--- EXISTING .revv/ CONFIGURATION ---\n")
+		sb.WriteString("This repository already has a .revv/ configuration. Review it against the current repo state and produce an incremental update.\n")
+		sb.WriteString("For each item, set the 'action' field to one of: add, update, keep, delete.\n")
+		sb.WriteString("- 'keep': item is unchanged, no modifications needed\n")
+		sb.WriteString("- 'update': item exists but needs changes (provide updated content)\n")
+		sb.WriteString("- 'add': new item that doesn't exist yet\n")
+		sb.WriteString("- 'delete': item is obsolete and should be removed (content can be empty)\n\n")
+		for path, content := range existingConfig {
+			sb.WriteString(fmt.Sprintf("--- .revv/%s ---\n", path))
+			sb.WriteString(content)
+			sb.WriteString("\n\n")
+		}
+	} else {
+		sb.WriteString("No existing .revv/ configuration found. This is a fresh initialization.\n")
+		sb.WriteString("Set the 'action' field to 'add' for all items.\n\n")
+	}
+
 	sb.WriteString("Based on the repository structure, language, and files provided, please generate:\n")
 	sb.WriteString("1. A Dockerfile (dockerfile) that sets up the correct build and test dependencies for this project.\n")
-	sb.WriteString("2. Global helpers (helpers) as an array of objects, each with 'filename' and 'content' fields.\n")
-	sb.WriteString("3. A list of tests (tests), where each test has a category, name, test_md, and helpers (array of {filename, content} objects).\n")
+	sb.WriteString("2. Global helpers (helpers) as an array of objects, each with 'filename', 'content', and 'action' fields.\n")
+	sb.WriteString("3. A list of tests (tests), where each test has a category, name, test_md, action, and helpers (array of {filename, content, action} objects).\n")
 	sb.WriteString("Ensure a 'manual' category is always generated in the tests array.\n")
 	sb.WriteString("The output must be a JSON object conforming to the response schema, containing:\n")
 	sb.WriteString(" - dockerfile (string)\n")
-	sb.WriteString(" - helpers (array of {filename, content} objects for global shared helpers)\n")
-	sb.WriteString(" - tests (array of objects with category, name, test_md, and helpers array)\n\n")
+	sb.WriteString(" - helpers (array of {filename, content, action} objects for global shared helpers)\n")
+	sb.WriteString(" - tests (array of objects with category, name, test_md, action, and helpers array)\n\n")
 	sb.WriteString("Each test's test_md MUST be formatted as markdown containing these section headers:\n")
 	sb.WriteString("## Description\n## Priority\n## Commands\n## Expected Output\n")
 	return sb.String()

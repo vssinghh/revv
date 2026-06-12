@@ -21,11 +21,19 @@ type TestInfo struct {
 	Name     string
 	TestMD   string
 	Helpers  map[string]string
+	Action   string // add, update, keep, delete
+}
+
+type HelperInfo struct {
+	Filename string
+	Content  string
+	Action   string
 }
 
 type helperEntry struct {
 	Filename string `json:"filename"`
 	Content  string `json:"content"`
+	Action   string `json:"action"`
 }
 
 type adkResponse struct {
@@ -35,11 +43,12 @@ type adkResponse struct {
 		Category string        `json:"category"`
 		Name     string        `json:"name"`
 		TestMD   string        `json:"test_md"`
+		Action   string        `json:"action"`
 		Helpers  []helperEntry `json:"helpers"`
 	} `json:"tests"`
 }
 
-func GenerateConfig(ctx context.Context, modelName string, repoContext map[string]string) (*ConfigOutput, error) {
+func GenerateConfig(ctx context.Context, modelName string, repoContext map[string]string, existingConfig map[string]string) (*ConfigOutput, error) {
 	// If mock mode is requested, use the mock implementation
 	if os.Getenv("REVV_MOCK_LLM") == "true" {
 		dockerfileContent := "FROM golang:1.26.4-alpine\nRUN apk add --no-cache git make\nWORKDIR /workspace\n"
@@ -138,7 +147,7 @@ func GenerateConfig(ctx context.Context, modelName string, repoContext map[strin
 		return nil, err
 	}
 
-	prompt := adk.ConstructPrompt(repoContext)
+	prompt := adk.ConstructPrompt(repoContext, existingConfig)
 	responseJSON, err := client.Generate(ctx, prompt)
 	if err != nil {
 		return nil, err
@@ -160,11 +169,16 @@ func GenerateConfig(ctx context.Context, modelName string, repoContext map[strin
 		for _, h := range t.Helpers {
 			testHelpers[h.Filename] = h.Content
 		}
+		action := t.Action
+		if action == "" {
+			action = "add"
+		}
 		tests = append(tests, TestInfo{
 			Category: t.Category,
 			Name:     t.Name,
 			TestMD:   t.TestMD,
 			Helpers:  testHelpers,
+			Action:   action,
 		})
 	}
 

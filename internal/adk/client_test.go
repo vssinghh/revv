@@ -9,7 +9,7 @@ func TestConstructPrompt(t *testing.T) {
 	repoCtx := map[string]string{
 		"README.md": "Test project content",
 	}
-	prompt := ConstructPrompt(repoCtx)
+	prompt := ConstructPrompt(repoCtx, nil)
 	if !strings.Contains(prompt, "Test project content") {
 		t.Errorf("expected prompt to contain README content, got: %s", prompt)
 	}

@@ -10,7 +10,7 @@ func TestGenerateConfig(t *testing.T) {
 	ctx := context.Background()
 	repoCtx := map[string]string{"README.md": "Dummy Content"}
 
-	config, err := GenerateConfig(ctx, "mock-model", repoCtx)
+	config, err := GenerateConfig(ctx, "mock-model", repoCtx, nil)
 	if err != nil {
 		t.Fatalf("GenerateConfig returned error: %v", err)
 	}
