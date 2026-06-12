@@ -23,14 +23,19 @@ type TestInfo struct {
 	Helpers  map[string]string
 }
 
+type helperEntry struct {
+	Filename string `json:"filename"`
+	Content  string `json:"content"`
+}
+
 type adkResponse struct {
-	Dockerfile string            `json:"dockerfile"`
-	Helpers    map[string]string `json:"helpers"`
+	Dockerfile string        `json:"dockerfile"`
+	Helpers    []helperEntry `json:"helpers"`
 	Tests      []struct {
-		Category string            `json:"category"`
-		Name     string            `json:"name"`
-		TestMD   string            `json:"test_md"`
-		Helpers  map[string]string `json:"helpers"`
+		Category string        `json:"category"`
+		Name     string        `json:"name"`
+		TestMD   string        `json:"test_md"`
+		Helpers  []helperEntry `json:"helpers"`
 	} `json:"tests"`
 }
 
@@ -144,19 +149,28 @@ func GenerateConfig(ctx context.Context, modelName string, repoContext map[strin
 		return nil, fmt.Errorf("failed to parse Gemini response JSON: %w (raw response: %s)", err, responseJSON)
 	}
 
+	globalHelpers := make(map[string]string)
+	for _, h := range parsed.Helpers {
+		globalHelpers[h.Filename] = h.Content
+	}
+
 	var tests []TestInfo
 	for _, t := range parsed.Tests {
+		testHelpers := make(map[string]string)
+		for _, h := range t.Helpers {
+			testHelpers[h.Filename] = h.Content
+		}
 		tests = append(tests, TestInfo{
 			Category: t.Category,
 			Name:     t.Name,
 			TestMD:   t.TestMD,
-			Helpers:  t.Helpers,
+			Helpers:  testHelpers,
 		})
 	}
 
 	return &ConfigOutput{
 		Dockerfile: parsed.Dockerfile,
-		Helpers:    parsed.Helpers,
+		Helpers:    globalHelpers,
 		Tests:      tests,
 	}, nil
 }

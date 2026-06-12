@@ -30,7 +30,7 @@ type GeminiSchema struct {
 	Properties           map[string]GeminiSchema `json:"properties,omitempty"`
 	Required             []string                `json:"required,omitempty"`
 	Items                *GeminiSchema           `json:"items,omitempty"`
-	AdditionalProperties *GeminiSchema           `json:"additionalProperties,omitempty"`
+
 	Description          string                  `json:"description,omitempty"`
 }
 
@@ -70,8 +70,15 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 		Properties: map[string]GeminiSchema{
 			"dockerfile": {Type: "STRING"},
 			"helpers": {
-				Type: "OBJECT",
-				AdditionalProperties: &GeminiSchema{Type: "STRING"},
+				Type: "ARRAY",
+				Items: &GeminiSchema{
+					Type: "OBJECT",
+					Properties: map[string]GeminiSchema{
+						"filename": {Type: "STRING"},
+						"content":  {Type: "STRING"},
+					},
+					Required: []string{"filename", "content"},
+				},
 			},
 			"tests": {
 				Type: "ARRAY",
@@ -82,8 +89,15 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 						"name":     {Type: "STRING"},
 						"test_md":  {Type: "STRING"},
 						"helpers": {
-							Type: "OBJECT",
-							AdditionalProperties: &GeminiSchema{Type: "STRING"},
+							Type: "ARRAY",
+							Items: &GeminiSchema{
+								Type: "OBJECT",
+								Properties: map[string]GeminiSchema{
+									"filename": {Type: "STRING"},
+									"content":  {Type: "STRING"},
+								},
+								Required: []string{"filename", "content"},
+							},
 						},
 					},
 					Required: []string{"category", "name", "test_md"},
@@ -156,13 +170,13 @@ func ConstructPrompt(repoContext map[string]string) string {
 	}
 	sb.WriteString("Based on the repository structure, language, and files provided, please generate:\n")
 	sb.WriteString("1. A Dockerfile (dockerfile) that sets up the correct build and test dependencies for this project.\n")
-	sb.WriteString("2. Global helpers (helpers) that are common utility scripts/files (e.g. check.sh).\n")
-	sb.WriteString("3. A list of tests (tests), where each test has a category, name, test_md, and category/test helpers.\n")
+	sb.WriteString("2. Global helpers (helpers) as an array of objects, each with 'filename' and 'content' fields.\n")
+	sb.WriteString("3. A list of tests (tests), where each test has a category, name, test_md, and helpers (array of {filename, content} objects).\n")
 	sb.WriteString("Ensure a 'manual' category is always generated in the tests array.\n")
 	sb.WriteString("The output must be a JSON object conforming to the response schema, containing:\n")
 	sb.WriteString(" - dockerfile (string)\n")
-	sb.WriteString(" - helpers (object mapping filename to content)\n")
-	sb.WriteString(" - tests (array of objects with category, name, test_md, and helpers object)\n\n")
+	sb.WriteString(" - helpers (array of {filename, content} objects for global shared helpers)\n")
+	sb.WriteString(" - tests (array of objects with category, name, test_md, and helpers array)\n\n")
 	sb.WriteString("Each test's test_md MUST be formatted as markdown containing these section headers:\n")
 	sb.WriteString("## Description\n## Priority\n## Commands\n## Expected Output\n")
 	return sb.String()

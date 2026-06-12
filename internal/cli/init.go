@@ -22,7 +22,7 @@ func newInitCmd() *cobra.Command {
 		RunE:  runInit,
 	}
 
-	cmd.Flags().String("model", "gemini-3.5-flash", "Gemini model to use for generation")
+	cmd.Flags().String("model", "gemini-3.1-flash-lite", "Gemini model to use for generation")
 
 	return cmd
 }
