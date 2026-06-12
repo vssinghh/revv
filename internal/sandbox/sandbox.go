@@ -33,6 +33,7 @@ type Sandbox struct {
 
 // New creates a new Sandbox by initializing a Docker client.
 func New() (*Sandbox, error) {
+	ensureDockerHost()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("docker: failed to create client: %w", err)
@@ -46,6 +47,7 @@ func New() (*Sandbox, error) {
 
 // CheckAvailable verifies the Docker daemon is reachable.
 func CheckAvailable(ctx context.Context) error {
+	ensureDockerHost()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("docker is not installed: %w\n\nInstall Docker: https://docs.docker.com/get-docker/", err)
@@ -57,6 +59,32 @@ func CheckAvailable(ctx context.Context) error {
 		return fmt.Errorf("docker daemon is not running: %w\n\nPlease start Docker Desktop or the Docker daemon", err)
 	}
 	return nil
+}
+
+// ensureDockerHost sets DOCKER_HOST if not already set, by discovering
+// common socket locations (Colima, Rancher, etc.).
+func ensureDockerHost() {
+	if os.Getenv("DOCKER_HOST") != "" {
+		return
+	}
+	if _, err := os.Stat("/var/run/docker.sock"); err == nil {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	candidates := []string{
+		filepath.Join(home, ".colima", "default", "docker.sock"),
+		filepath.Join(home, ".colima", "docker.sock"),
+		filepath.Join(home, ".rd", "docker.sock"),
+	}
+	for _, sock := range candidates {
+		if _, err := os.Stat(sock); err == nil {
+			os.Setenv("DOCKER_HOST", "unix://"+sock)
+			return
+		}
+	}
 }
 
 // Build builds a Docker image from a Dockerfile in the given directory.

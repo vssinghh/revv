@@ -95,17 +95,20 @@ echo "hello"
 	}
 }
 
-func TestParseTestMD_InvalidPriority(t *testing.T) {
+func TestParseTestMD_UnknownPriorityNormalized(t *testing.T) {
 	content := `## Description
-Test with bad priority.
+Test with unknown priority.
 
 ## Priority
 critical
 `
 
-	_, err := ParseTestMD(content)
-	if err == nil {
-		t.Error("expected error for invalid priority")
+	pt, err := ParseTestMD(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if pt.Priority != "blocking" {
+		t.Errorf("expected 'critical' normalized to 'blocking', got %q", pt.Priority)
 	}
 }
 

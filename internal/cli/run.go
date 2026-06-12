@@ -57,7 +57,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	fmt.Println("Checking Docker availability...")
-	if err := sandbox.CheckAvailable(ctx); err != nil {
+	if err := sandbox.EnsureDocker(ctx, verbose); err != nil {
 		return err
 	}
 

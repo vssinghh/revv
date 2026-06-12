@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -25,13 +24,10 @@ func ParseTestMD(content string) (*ParsedTest, error) {
 	}
 
 	if pri, ok := sections["priority"]; ok {
-		pt.Priority = strings.TrimSpace(strings.ToLower(pri))
+		pt.Priority = normalizePriority(strings.TrimSpace(strings.ToLower(pri)))
 	}
 	if pt.Priority == "" {
 		pt.Priority = "warning" // default
-	}
-	if pt.Priority != "blocking" && pt.Priority != "warning" {
-		return nil, fmt.Errorf("invalid priority %q: must be 'blocking' or 'warning'", pt.Priority)
 	}
 
 	if cmds, ok := sections["commands"]; ok {
@@ -49,6 +45,18 @@ func ParseTestMD(content string) (*ParsedTest, error) {
 	pt.NoCommands = pt.Commands == ""
 
 	return pt, nil
+}
+
+// normalizePriority maps common priority synonyms to "blocking" or "warning".
+func normalizePriority(raw string) string {
+	switch raw {
+	case "blocking", "high", "critical", "p0", "must", "required":
+		return "blocking"
+	case "warning", "low", "medium", "minor", "p1", "p2", "info", "nice-to-have":
+		return "warning"
+	default:
+		return "warning"
+	}
 }
 
 // parseSections splits markdown content by ## headings into a map.
