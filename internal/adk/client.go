@@ -329,6 +329,8 @@ Rules:
 - Commands in test_md must be real, executable shell commands with inline assertions
 - Do NOT generate tests that duplicate existing test coverage (see "Existing Test Coverage" above)
 - At least one test per core functionality MUST validate output correctness, not just exit codes
+- Do NOT use mock modes, test doubles, or fake backends (e.g., REVV_MOCK_LLM, MOCK_API, TEST_MODE). Tests must exercise the REAL product behavior. If a test needs an API key or external credential, reference it as an environment variable (e.g., $GEMINI_API_KEY) — the test runner will auto-detect and pass it from the host environment.
+- If a test cannot run without an external service that is unavailable in the sandbox (e.g., Docker-in-Docker), test the pre-condition error path instead of skipping the functionality entirely.
 `)
 
 	return sb.String()
