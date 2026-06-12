@@ -19,12 +19,12 @@ LLM-powered PR review automation tool for open-source maintainers. Implements th
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|-------------|--------|
-| 1 | Repository Scaffold | Initialize git, .gitignore, go.mod, LICENSE, README.md, Makefile | none | IN_PROGRESS |
-| 2 | E2E Test Infra | Implement Tier 1-4 tests and test runner, publish TEST_READY.md | M1 | PLANNED |
-| 3 | CLI Base & Routing | CLI subcommand structure (Cobra), help commands, flag/key checking | M1, M2 | PLANNED |
-| 4 | Context & Gemini SDK | Read project files, construct prompt, invoke Gemini via `adk-go`, write `.revv/` | M3 | PLANNED |
-| 5 | Git Operations | Branch creation `revv/init`, stage/commit files, print next steps | M4 | PLANNED |
-| 6 | E2E Pass & Audit | Complete E2E pass, run adversarial hardening (Tier 5), Forensic Audit | M5 | PLANNED |
+| 1 | Repository Scaffold | Initialize git, .gitignore, go.mod, LICENSE, README.md, Makefile | none | DONE |
+| 2 | E2E Test Infra | Implement Tier 1-4 tests and test runner, publish TEST_READY.md | M1 | DONE |
+| 3 | CLI Base & Routing | CLI subcommand structure (Cobra), help commands, flag/key checking | M1, M2 | DONE |
+| 4 | Context & Gemini SDK | Read project files, construct prompt, invoke Gemini via `adk-go`, write `.revv/` | M3 | DONE |
+| 5 | Git Operations | Branch creation `revv/init`, stage/commit files, print next steps | M4 | DONE |
+| 6 | E2E Pass & Audit | Complete E2E pass, run adversarial hardening (Tier 5), Forensic Audit | M5 | DONE |
 
 ## Interface Contracts
 ### `internal/cli` ↔ `internal/context`

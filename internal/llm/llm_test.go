@@ -6,6 +6,7 @@ import (
 )
 
 func TestGenerateConfig(t *testing.T) {
+	t.Setenv("REVV_MOCK_LLM", "true")
 	ctx := context.Background()
 	repoCtx := map[string]string{"README.md": "Dummy Content"}
 
