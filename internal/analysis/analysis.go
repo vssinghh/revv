@@ -73,7 +73,7 @@ func Analyze(ctx context.Context, apiKey, model, diff string,
 	if diff != "" {
 		fmt.Println("\n🔍 Analyzing PR coverage...")
 		coveragePrompt := BuildCoveragePrompt(diff, existingTests)
-		coverageJSON, err := client.Generate(ctx, coveragePrompt)
+		coverageJSON, err := client.GenerateRaw(ctx, coveragePrompt)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: coverage analysis failed: %v\n", err)
 		} else {
@@ -133,7 +133,7 @@ func Analyze(ctx context.Context, apiKey, model, diff string,
 	if len(failures) > 0 {
 		fmt.Printf("💡 Analyzing %d failure(s)...\n", len(failures))
 		failurePrompt := BuildFailurePrompt(failures)
-		failureJSON, err := client.Generate(ctx, failurePrompt)
+		failureJSON, err := client.GenerateRaw(ctx, failurePrompt)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failure analysis failed: %v\n", err)
 		} else {

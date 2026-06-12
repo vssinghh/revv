@@ -168,6 +168,62 @@ func (c *Client) Generate(ctx context.Context, prompt string) (string, error) {
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
+// GenerateRaw sends a prompt to Gemini and returns the raw JSON response
+// without enforcing a specific schema. Used for analysis prompts.
+func (c *Client) GenerateRaw(ctx context.Context, prompt string) (string, error) {
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", c.model, c.apiKey)
+
+	reqBody := RequestBody{
+		Contents: []Content{
+			{
+				Parts: []Part{
+					{Text: prompt},
+				},
+			},
+		},
+		GenerationConfig: &GenerationConfig{
+			ResponseMimeType: "application/json",
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned non-200 status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var geminiResp ResponseBody
+	if err := json.Unmarshal(bodyBytes, &geminiResp); err != nil {
+		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("empty response candidate from Gemini")
+	}
+
+	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+}
+
 func ConstructPrompt(repoContext map[string]string, existingConfig map[string]string) string {
 	var sb strings.Builder
 
