@@ -13,14 +13,15 @@ import (
 
 // TestResult holds the outcome of a single test execution.
 type TestResult struct {
-	Category string
-	Name     string
-	Priority string
-	Passed   bool
-	Skipped  bool
-	Output   string
-	Duration time.Duration
-	Error    string
+	Category      string
+	Name          string
+	Priority      string
+	Passed        bool
+	Skipped       bool
+	Output        string
+	Duration      time.Duration
+	Error         string
+	TestMDContent string // raw test.md content (used for failure analysis)
 }
 
 // Executor is the interface for running commands inside a sandbox.
@@ -164,9 +165,10 @@ func RunTest(ctx context.Context, executor Executor, category, name, content str
 	}
 
 	result := TestResult{
-		Category: category,
-		Name:     name,
-		Priority: parsed.Priority,
+		Category:      category,
+		Name:          name,
+		Priority:      parsed.Priority,
+		TestMDContent: content,
 	}
 
 	// Skip tests with no commands

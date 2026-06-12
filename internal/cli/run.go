@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vipinsingh/revv/internal/analysis"
 	"github.com/vipinsingh/revv/internal/git"
 	gh "github.com/vipinsingh/revv/internal/github"
 	"github.com/vipinsingh/revv/internal/runner"
@@ -215,10 +216,67 @@ func runRun(cmd *cobra.Command, args []string) error {
 	// Summary
 	fmt.Print(runner.Summary(results))
 
+	// LLM Analysis (only in PR mode with API key)
+	var analysisData *gh.AnalysisData
+	if prNumber > 0 {
+		apiKey := os.Getenv("GEMINI_API_KEY")
+		modelName, _ := cmd.Flags().GetString("model")
+		if apiKey != "" {
+			// Get PR diff
+			diff, diffErr := analysis.GetPRDiff(cwd, "main")
+			if diffErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not get PR diff: %v\n", diffErr)
+			}
+
+			// Collect existing tests for context
+			existingTests, _ := analysis.CollectExistingTests(revvDir)
+
+			// Run analysis
+			result, analysisErr := analysis.Analyze(ctx, apiKey, modelName, diff, existingTests, results, sb)
+			if analysisErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: LLM analysis failed: %v\n", analysisErr)
+			} else {
+				// Print analysis to terminal
+				analysis.PrintAnalysis(result)
+
+				// Convert to comment format
+				analysisData = &gh.AnalysisData{}
+				for _, e := range result.FailureExplanations {
+					analysisData.FailureExplanations = append(analysisData.FailureExplanations, gh.FailureExplanation{
+						Category:    e.Category,
+						Name:        e.Name,
+						Explanation: e.Explanation,
+						Suggestion:  e.Suggestion,
+					})
+				}
+				for _, g := range result.CoverageGaps {
+					analysisData.CoverageGaps = append(analysisData.CoverageGaps, gh.CoverageGap{
+						File:        g.File,
+						Description: g.Description,
+						Severity:    g.Severity,
+					})
+				}
+				for _, gt := range result.GeneratedTests {
+					if gt.Result != nil {
+						analysisData.GeneratedTests = append(analysisData.GeneratedTests, gh.GeneratedTestResult{
+							Category: gt.Category,
+							Name:     gt.Name,
+							Passed:   gt.Result.Passed,
+							Error:    gt.Result.Error,
+							Duration: gt.Result.Duration,
+						})
+					}
+				}
+			}
+		} else if verbose {
+			fmt.Println("\nSkipping LLM analysis (GEMINI_API_KEY not set)")
+		}
+	}
+
 	// Post PR comment if in PR mode
 	if ghClient != nil && prNumber > 0 {
 		fmt.Printf("\nPosting results to PR #%d...\n", prNumber)
-		comment := gh.FormatComment(results, prNumber, prBranch)
+		comment := gh.FormatCommentWithAnalysis(results, prNumber, prBranch, analysisData)
 		if err := ghClient.UpsertComment(ctx, prNumber, comment); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to post PR comment: %v\n", err)
 		} else {
