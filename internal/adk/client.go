@@ -317,7 +317,7 @@ Additionally, for each core functionality, generate at least one **error handlin
 Do NOT skip a core functionality just because it requires external dependencies (e.g., Docker, databases). Instead, test its pre-condition checks and error paths (e.g., "what error does the user get if Docker is not installed?").
 
 ### Step 2: Generate Configuration
-1. **Dockerfile**: Sets up build and test dependencies for this project. Use the correct base image matching the project's language version (e.g., for Go projects, read go.mod to find the exact Go version and use "golang:VERSION-alpine" where VERSION matches go.mod). Install all required tools and copy source code. Optimize for layer caching (copy dependency files first, then source).
+1. **Dockerfile**: Sets up build and test dependencies for this project. Use the correct base image matching the project's language version (e.g., for Go projects, read go.mod to find the exact Go version and use "golang:VERSION-alpine" where VERSION matches go.mod). Install all required tools and copy source code. Optimize for layer caching (copy dependency files first, then source). IMPORTANT: Pre-build the project in the Dockerfile (e.g., "RUN make build") so the compiled binary is baked into the image — this way tests start instantly instead of each container recompiling from scratch.
 2. **Global helpers**: Array of {filename, content, action} objects. Reusable scripts shared across test categories.
 3. **Tests**: Array of {category, name, test_md, action, helpers} objects. Each test_md MUST contain these sections: ## Description, ## Priority, ## Commands, ## Expected Output.
 
