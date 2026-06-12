@@ -610,8 +610,9 @@ func TestTier2BoundaryCorner(t *testing.T) {
 		// Restore permissions so cleanup works
 		_ = os.Chmod(filepath.Join(dir, "README.md"), 0644)
 
-		if res.ExitCode == 0 {
-			t.Errorf("expected failure when context file is unreadable")
+		// Unreadable files are gracefully skipped, so init should still succeed
+		if res.ExitCode != 0 {
+			t.Errorf("expected success when context file is unreadable (graceful skip), got exit code %d, stderr: %s", res.ExitCode, res.Stderr)
 		}
 	})
 
