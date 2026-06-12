@@ -16,6 +16,9 @@ go.work.sum
 
 # Agent build artifacts (teamwork system)
 .agents/
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md
 
 # IDE
 .idea/
