@@ -301,7 +301,16 @@ Helpers are shared shell scripts or utilities that multiple tests can reference.
 
 	// 10. Generation instructions
 	sb.WriteString(`## Your Task
-Generate:
+
+### Step 1: Identify Core Functionalities
+Before generating tests, analyze the source code and identify the **core user-facing functionalities** of this project. These are the primary things a user does with this software (e.g., CLI commands, API endpoints, library methods, UI workflows).
+
+For each core functionality, you MUST generate at least one **functional validation test** that:
+- Executes the functionality end-to-end (not just checks that it doesn't crash)
+- Validates the **output** is structurally correct (files created, data returned, state changed)
+- Asserts specific properties of the output (file exists, contains expected content, has correct format)
+
+### Step 2: Generate Configuration
 1. **Dockerfile**: Sets up build and test dependencies for this project. Use the correct base image, install all required tools, and copy source code. Optimize for layer caching (copy dependency files first, then source).
 2. **Global helpers**: Array of {filename, content, action} objects. Reusable scripts shared across test categories.
 3. **Tests**: Array of {category, name, test_md, action, helpers} objects. Each test_md MUST contain these sections: ## Description, ## Priority, ## Commands, ## Expected Output.
@@ -313,6 +322,7 @@ Rules:
 - Generate at least 5 tests across at least 3 categories
 - Commands in test_md must be real, executable shell commands with inline assertions
 - Do NOT generate tests that duplicate existing test coverage (see "Existing Test Coverage" above)
+- At least one test per core functionality MUST validate output correctness, not just exit codes
 `)
 
 	return sb.String()
