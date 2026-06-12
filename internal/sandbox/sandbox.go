@@ -9,12 +9,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -22,13 +22,17 @@ import (
 	"github.com/vipinsingh/revv/internal/runner"
 )
 
-// Sandbox manages a Docker container for isolated test execution.
+// Sandbox manages Docker containers for isolated test execution.
+// After Build(), each call to Exec() creates a fresh container from the image.
 type Sandbox struct {
-	client      *client.Client
-	containerID string
-	imageTag    string
-	workDir     string
-	created     bool
+	client   *client.Client
+	imageTag string
+	workDir  string
+	repoDir  string
+	envVars  []string
+
+	mu         sync.Mutex
+	containers []string // track all containers for cleanup
 }
 
 // New creates a new Sandbox by initializing a Docker client.
@@ -43,6 +47,11 @@ func New() (*Sandbox, error) {
 		client:  cli,
 		workDir: "/workspace",
 	}, nil
+}
+
+// SetEnv sets environment variables to pass into containers.
+func (s *Sandbox) SetEnv(env []string) {
+	s.envVars = env
 }
 
 // CheckAvailable verifies the Docker daemon is reachable.
@@ -88,9 +97,7 @@ func ensureDockerHost() {
 }
 
 // Build builds a Docker image from a Dockerfile in the given directory.
-// The contextDir should be the repo root, and dockerfilePath is relative to it.
 func (s *Sandbox) Build(ctx context.Context, contextDir, dockerfilePath string, verbose bool) error {
-	// Create tar archive of the build context
 	buildContext, err := createTarArchive(contextDir)
 	if err != nil {
 		return fmt.Errorf("docker: create build context: %w", err)
@@ -99,10 +106,16 @@ func (s *Sandbox) Build(ctx context.Context, contextDir, dockerfilePath string, 
 
 	s.imageTag = fmt.Sprintf("revv-sandbox-%d", time.Now().UnixNano())
 
+	absRepoDir, err := filepath.Abs(contextDir)
+	if err != nil {
+		return fmt.Errorf("docker: resolve repo path: %w", err)
+	}
+	s.repoDir = absRepoDir
+
 	options := types.ImageBuildOptions{
-		Dockerfile: dockerfilePath,
-		Tags:       []string{s.imageTag},
-		Remove:     true,
+		Dockerfile:  dockerfilePath,
+		Tags:        []string{s.imageTag},
+		Remove:      true,
 		ForceRemove: true,
 	}
 
@@ -112,7 +125,6 @@ func (s *Sandbox) Build(ctx context.Context, contextDir, dockerfilePath string, 
 	}
 	defer res.Body.Close()
 
-	// Parse build output — errors are in the stream, not in the error above
 	var output io.Writer = io.Discard
 	if verbose {
 		output = os.Stdout
@@ -126,65 +138,11 @@ func (s *Sandbox) Build(ctx context.Context, contextDir, dockerfilePath string, 
 	return nil
 }
 
-// Start creates and starts a container from the built image, mounting repoDir as /workspace.
-func (s *Sandbox) Start(ctx context.Context, repoDir string) error {
-	if s.imageTag == "" {
-		return fmt.Errorf("docker: no image built — call Build() first")
-	}
-	if s.created {
-		return fmt.Errorf("docker: sandbox already started")
-	}
-
-	absRepoDir, err := filepath.Abs(repoDir)
-	if err != nil {
-		return fmt.Errorf("docker: resolve repo path: %w", err)
-	}
-
-	resp, err := s.client.ContainerCreate(ctx,
-		&container.Config{
-			Image:      s.imageTag,
-			WorkingDir: s.workDir,
-			Cmd:        []string{"sleep", "infinity"},
-			Tty:        false,
-		},
-		&container.HostConfig{
-			Mounts: []mount.Mount{
-				{
-					Type:     mount.TypeBind,
-					Source:   absRepoDir,
-					Target:   s.workDir,
-					ReadOnly: false,
-				},
-			},
-			Resources: container.Resources{
-				Memory:   512 * 1024 * 1024, // 512MB
-				NanoCPUs: 1e9,               // 1 CPU core
-			},
-			SecurityOpt: []string{"no-new-privileges"},
-		},
-		nil, nil, "",
-	)
-	if err != nil {
-		return fmt.Errorf("docker: create container: %w", err)
-	}
-
-	s.containerID = resp.ID
-	s.created = true
-
-	if err := s.client.ContainerStart(ctx, s.containerID, container.StartOptions{}); err != nil {
-		_ = s.client.ContainerRemove(ctx, s.containerID, container.RemoveOptions{Force: true})
-		s.containerID = ""
-		s.created = false
-		return fmt.Errorf("docker: start container: %w", err)
-	}
-
-	return nil
-}
-
-// Exec implements the runner.Executor interface — executes a command inside the container.
+// Exec creates a fresh container, runs the command, captures output, and removes the container.
+// This provides full isolation — each test gets a clean filesystem from the image.
 func (s *Sandbox) Exec(ctx context.Context, cmd []string) (*runner.ExecResult, error) {
-	if s.containerID == "" {
-		return nil, fmt.Errorf("docker: cannot exec: sandbox not started")
+	if s.imageTag == "" {
+		return nil, fmt.Errorf("docker: no image built — call Build() first")
 	}
 	if len(cmd) == 0 {
 		return nil, fmt.Errorf("docker: exec command is empty")
@@ -192,46 +150,76 @@ func (s *Sandbox) Exec(ctx context.Context, cmd []string) (*runner.ExecResult, e
 
 	start := time.Now()
 
-	execConfig := container.ExecOptions{
-		Cmd:          cmd,
-		WorkingDir:   s.workDir,
-		AttachStdout: true,
-		AttachStderr: true,
-	}
-
-	execResp, err := s.client.ContainerExecCreate(ctx, s.containerID, execConfig)
+	// Create a fresh container from the cached image
+	resp, err := s.client.ContainerCreate(ctx,
+		&container.Config{
+			Image:      s.imageTag,
+			WorkingDir: s.workDir,
+			Cmd:        cmd,
+			Tty:        false,
+			Env:        s.envVars,
+		},
+		&container.HostConfig{
+			Resources: container.Resources{
+				Memory:   512 * 1024 * 1024, // 512MB
+				NanoCPUs: 2e9,               // 2 CPU cores
+			},
+			SecurityOpt: []string{"no-new-privileges"},
+		},
+		nil, nil, "",
+	)
 	if err != nil {
-		return nil, fmt.Errorf("docker: exec create: %w", err)
+		return nil, fmt.Errorf("docker: create container: %w", err)
 	}
 
-	hijack, err := s.client.ContainerExecAttach(ctx, execResp.ID, container.ExecAttachOptions{})
+	containerID := resp.ID
+	s.trackContainer(containerID)
+
+	// Attach to capture stdout/stderr before starting
+	attachResp, err := s.client.ContainerAttach(ctx, containerID, container.AttachOptions{
+		Stdout: true,
+		Stderr: true,
+		Stream: true,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("docker: exec attach: %w", err)
+		s.removeContainer(containerID)
+		return nil, fmt.Errorf("docker: attach container: %w", err)
 	}
-	defer hijack.Close()
 
+	// Start the container
+	if err := s.client.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
+		attachResp.Close()
+		s.removeContainer(containerID)
+		return nil, fmt.Errorf("docker: start container: %w", err)
+	}
+
+	// Read output
 	var stdout, stderr bytes.Buffer
-	_, err = stdcopy.StdCopy(&stdout, &stderr, hijack.Reader)
-	if err != nil {
-		if ctx.Err() != nil {
-			return &runner.ExecResult{
-				ExitCode: -1,
-				Stdout:   stdout.String(),
-				Stderr:   stderr.String(),
-				Duration: time.Since(start),
-				TimedOut: ctx.Err() == context.DeadlineExceeded,
-			}, nil
+	_, _ = stdcopy.StdCopy(&stdout, &stderr, attachResp.Reader)
+	attachResp.Close()
+
+	// Wait for container to finish
+	statusCh, errCh := s.client.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+	var exitCode int
+	select {
+	case err := <-errCh:
+		if err != nil {
+			if ctx.Err() != nil {
+				exitCode = -1
+			} else {
+				s.removeContainer(containerID)
+				return nil, fmt.Errorf("docker: wait for container: %w", err)
+			}
 		}
-		return nil, fmt.Errorf("docker: read exec output: %w", err)
+	case status := <-statusCh:
+		exitCode = int(status.StatusCode)
 	}
 
-	inspectResp, err := s.client.ContainerExecInspect(ctx, execResp.ID)
-	if err != nil {
-		return nil, fmt.Errorf("docker: exec inspect: %w", err)
-	}
+	// Clean up container
+	s.removeContainer(containerID)
 
 	return &runner.ExecResult{
-		ExitCode: inspectResp.ExitCode,
+		ExitCode: exitCode,
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 		Duration: time.Since(start),
@@ -239,24 +227,24 @@ func (s *Sandbox) Exec(ctx context.Context, cmd []string) (*runner.ExecResult, e
 	}, nil
 }
 
-// Stop stops and removes the container, and removes the built image. Idempotent.
+// Stop removes the built image and cleans up any remaining containers. Idempotent.
 func (s *Sandbox) Stop(ctx context.Context) error {
-	// Use a fresh context for cleanup
 	cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if s.containerID != "" {
-		stopTimeout := 10
-		_ = s.client.ContainerStop(cleanupCtx, s.containerID, container.StopOptions{Timeout: &stopTimeout})
-		_ = s.client.ContainerRemove(cleanupCtx, s.containerID, container.RemoveOptions{
+	s.mu.Lock()
+	containers := make([]string, len(s.containers))
+	copy(containers, s.containers)
+	s.containers = nil
+	s.mu.Unlock()
+
+	for _, id := range containers {
+		_ = s.client.ContainerRemove(cleanupCtx, id, container.RemoveOptions{
 			Force:         true,
 			RemoveVolumes: true,
 		})
-		s.containerID = ""
-		s.created = false
 	}
 
-	// Remove the built image
 	if s.imageTag != "" {
 		_, _ = s.client.ImageRemove(cleanupCtx, s.imageTag, image.RemoveOptions{Force: true})
 		s.imageTag = ""
@@ -267,6 +255,30 @@ func (s *Sandbox) Stop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Sandbox) trackContainer(id string) {
+	s.mu.Lock()
+	s.containers = append(s.containers, id)
+	s.mu.Unlock()
+}
+
+func (s *Sandbox) removeContainer(id string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = s.client.ContainerRemove(ctx, id, container.RemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
+
+	s.mu.Lock()
+	for i, cid := range s.containers {
+		if cid == id {
+			s.containers = append(s.containers[:i], s.containers[i+1:]...)
+			break
+		}
+	}
+	s.mu.Unlock()
 }
 
 // createTarArchive creates a tar archive from a source directory for Docker build context.
@@ -296,7 +308,6 @@ func createTarArchive(srcDir string) (io.ReadCloser, error) {
 				return nil
 			}
 
-			// Skip .git but keep .revv (needed for Dockerfile)
 			if d.IsDir() && d.Name() == ".git" {
 				return filepath.SkipDir
 			}

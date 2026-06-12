@@ -16,7 +16,7 @@ func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run tests from .revv/ inside a Docker sandbox",
-		Long:  `Builds a Docker image from .revv/Dockerfile, starts an isolated container, and executes all discovered tests.`,
+		Long:  `Builds a Docker image from .revv/Dockerfile, starts isolated containers, and executes all discovered tests in parallel.`,
 		Args:  cobra.NoArgs,
 		RunE:  runRun,
 	}
@@ -52,13 +52,52 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no .revv/Dockerfile found. Run 'revv init' to generate one")
 	}
 
-	// Check Docker availability
+	// Check Docker availability (auto-install if needed)
 	ctx, cancel := stdctx.WithTimeout(stdctx.Background(), timeout)
 	defer cancel()
 
 	fmt.Println("Checking Docker availability...")
 	if err := sandbox.EnsureDocker(ctx, verbose); err != nil {
 		return err
+	}
+
+	// Detect environment variables from test files
+	testPaths, err := runner.DiscoverTests(revvDir)
+	if err != nil {
+		return fmt.Errorf("failed to discover tests: %w", err)
+	}
+
+	var testContents []string
+	for _, tp := range testPaths {
+		content, err := os.ReadFile(tp)
+		if err == nil {
+			testContents = append(testContents, string(content))
+		}
+	}
+
+	// Look for .env files
+	var envFiles []string
+	for _, candidate := range []string{
+		filepath.Join(cwd, ".env"),
+		filepath.Join(revvDir, ".env"),
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			envFiles = append(envFiles, candidate)
+		}
+	}
+
+	envVars, envStatuses := runner.DetectEnvVars(testContents, envFiles)
+
+	if len(envStatuses) > 0 {
+		fmt.Println("\nEnvironment variables detected from tests:")
+		for _, s := range envStatuses {
+			if s.Set {
+				fmt.Printf("  %-30s ✓ (%s)\n", s.Name, s.Source)
+			} else {
+				fmt.Printf("  %-30s ✗ (not set)\n", s.Name)
+			}
+		}
+		fmt.Println()
 	}
 
 	// Build image
@@ -69,23 +108,19 @@ func runRun(cmd *cobra.Command, args []string) error {
 	}
 	defer sb.Stop(ctx)
 
+	sb.SetEnv(envVars)
+
 	if err := sb.Build(ctx, cwd, ".revv/Dockerfile", verbose); err != nil {
 		return fmt.Errorf("failed to build sandbox image: %w", err)
 	}
 
-	// Start container
-	fmt.Println("Starting sandbox...")
-	if err := sb.Start(ctx, cwd); err != nil {
-		return fmt.Errorf("failed to start sandbox: %w", err)
-	}
-
-	// Discover and run tests
+	// Run tests (parallel, one container per test)
 	filter := runner.FilterOpts{
 		Category: category,
 		Test:     testFilter,
 	}
 
-	fmt.Println("\nRunning tests:")
+	fmt.Println("Running tests (parallel, isolated containers):")
 	results, err := runner.RunAll(ctx, sb, revvDir, filter)
 	if err != nil {
 		return fmt.Errorf("failed to run tests: %w", err)
@@ -115,7 +150,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 				fmt.Printf("    Error: %s\n", r.Error)
 			}
 			if r.Output != "" {
-				// Indent output
 				lines := strings.Split(strings.TrimSpace(r.Output), "\n")
 				for _, line := range lines {
 					fmt.Printf("    │ %s\n", line)
@@ -126,7 +160,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Summary
 	fmt.Print(runner.Summary(results))
-
 	fmt.Println("\nSandbox cleaned up.")
 
 	if runner.HasBlockingFailure(results) {

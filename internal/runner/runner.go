@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -80,17 +81,24 @@ func TestInfo(revvDir, testPath string) (category, name string) {
 }
 
 // RunAll discovers and executes all tests in the .revv/ directory.
+// Tests run in parallel — each gets its own container for full isolation.
 func RunAll(ctx context.Context, executor Executor, revvDir string, filter FilterOpts) ([]TestResult, error) {
 	testPaths, err := DiscoverTests(revvDir)
 	if err != nil {
 		return nil, err
 	}
 
-	var results []TestResult
+	type testJob struct {
+		index    int
+		category string
+		name     string
+		content  string
+	}
+
+	var jobs []testJob
 	for _, tp := range testPaths {
 		category, name := TestInfo(revvDir, tp)
 
-		// Apply filters
 		if filter.Category != "" && category != filter.Category {
 			continue
 		}
@@ -100,20 +108,45 @@ func RunAll(ctx context.Context, executor Executor, revvDir string, filter Filte
 
 		content, err := os.ReadFile(tp)
 		if err != nil {
-			results = append(results, TestResult{
-				Category: category,
-				Name:     name,
-				Priority: "warning",
-				Passed:   false,
-				Error:    fmt.Sprintf("failed to read test file: %v", err),
+			jobs = append(jobs, testJob{
+				index:    len(jobs),
+				category: category,
+				name:     name,
+				content:  "",
 			})
 			continue
 		}
 
-		result := RunTest(ctx, executor, category, name, string(content))
-		results = append(results, result)
+		jobs = append(jobs, testJob{
+			index:    len(jobs),
+			category: category,
+			name:     name,
+			content:  string(content),
+		})
 	}
 
+	results := make([]TestResult, len(jobs))
+	var wg sync.WaitGroup
+
+	for _, job := range jobs {
+		wg.Add(1)
+		go func(j testJob) {
+			defer wg.Done()
+			if j.content == "" {
+				results[j.index] = TestResult{
+					Category: j.category,
+					Name:     j.name,
+					Priority: "warning",
+					Passed:   false,
+					Error:    "failed to read test file",
+				}
+				return
+			}
+			results[j.index] = RunTest(ctx, executor, j.category, j.name, j.content)
+		}(job)
+	}
+
+	wg.Wait()
 	return results, nil
 }
 
