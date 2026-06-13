@@ -90,64 +90,64 @@ jobs:
       - run: revv exec --json
 ```
 
-Or without Go — just use Docker directly:
+Or without Go — use the `revv exec` self-build:
 
 ```yaml
       - run: docker build -t revv-sandbox -f .revv/Dockerfile .
       - run: |
-          for test in $(find .revv -name test.md); do
-            echo "Running: $test"
-            commands=$(sed -n '/```bash/,/```/p' "$test" | grep -v '```')
-            docker run --rm revv-sandbox sh -c "$commands"
-          done
+          # Build revv from source and run
+          go build -o /tmp/revv github.com/vssinghh/revv/cmd/revv
+          /tmp/revv exec --json
 ```
 
 ## Test Format
 
+Each test is a `test.md` file with markdown headings.
+
 ### Automated tests (run in Docker)
 
-```markdown
-## Description
-Verify the CLI binary compiles and is executable.
+A test.md with `## Commands` runs inside a Docker container:
 
-## Priority
-blocking
-
-## Commands
-```bash
-make build
-test -x ./bin/myapp || (echo "FAIL" && exit 1)
-echo "PASS"
-```
-
-## Expected Output
-Exit code 0.
-```
+> **## Description**
+> Verify the CLI binary compiles and is executable.
+>
+> **## Priority**
+> `blocking`
+>
+> **## Commands**
+> ```bash
+> make build
+> test -x ./bin/myapp || (echo "FAIL" && exit 1)
+> echo "PASS"
+> ```
+>
+> **## Expected Output**
+> Exit code 0.
 
 ### Browser tests (run by IDE)
 
-```markdown
-## Description
-Verify the login flow works end-to-end.
+A test.md with `## Steps` is executed by the IDE's browser automation:
 
-## Priority
-blocking
-
-## Setup
-```bash
-npm start &
-sleep 3
-```
-
-## Steps
-1. Open browser to http://localhost:3000
-2. Click the "Login" button
-3. Enter credentials
-4. Verify the dashboard loads
-
-## Expected Output
-Dashboard shows "Welcome" text. No console errors.
-```
+> **## Description**
+> Verify the login flow works end-to-end.
+>
+> **## Priority**
+> `blocking`
+>
+> **## Setup**
+> ```bash
+> npm start &
+> sleep 3
+> ```
+>
+> **## Steps**
+> 1. Open browser to http://localhost:3000
+> 2. Click the "Login" button
+> 3. Enter credentials
+> 4. Verify the dashboard loads
+>
+> **## Expected Output**
+> Dashboard shows "Welcome" text. No console errors.
 
 - **Priority**: `blocking` = merge-gating, `warning` = advisory
 - **Commands**: Real shell commands, executed inside Docker
