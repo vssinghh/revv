@@ -29,15 +29,17 @@ Contributor says "revv run" in their IDE
 
 ### Setting up revv in your repo
 
-1. Open your IDE (Antigravity, Claude Code, Cursor, Codex)
-2. Say: **"revv update"**
-3. The IDE generates:
-   - `.revv/Dockerfile` — Docker sandbox for your project
-   - `.revv/<category>/<test>/test.md` — test definitions
-   - `AGENTS.md` — pointer file so contributors can use revv too
-4. Review the generated files, commit, and push
+Open your IDE (Antigravity, Claude Code, Cursor, Codex) and paste this prompt:
 
-That's it. Your repo now has automated QA.
+> Read https://raw.githubusercontent.com/vssinghh/revv/main/skills/revv-update/SKILL.md and follow the instructions to set up automated QA for this repo.
+
+Your IDE will:
+1. Fetch the latest revv instructions
+2. Analyze your codebase
+3. Generate `.revv/` with Dockerfile and test definitions
+4. Generate `AGENTS.md` so contributors can use revv too
+
+Review the generated files, commit, and push. That's it.
 
 ### What gets generated
 
