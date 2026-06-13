@@ -13,12 +13,22 @@ Check if the current changes need new or updated tests. If `.revv/` doesn't exis
 
 Find all `.revv/<category>/<name>/test.md` files that have a `## Commands` section.
 
-**If `revv exec` is installed** (preferred — parallel, fast):
+**Step A: Ensure `revv exec` is available**
+```bash
+# Check if already available
+which revv
+
+# If not found, build from source (the code is in this repo)
+go build -o /tmp/revv ./cmd/revv
+# Then use /tmp/revv exec --verbose
+```
+
+**Step B: Run the tests**
 ```bash
 revv exec --verbose
 ```
 
-**If `revv exec` is NOT installed** (fallback — sequential):
+**If Go is also not installed** (final fallback — raw docker):
 ```bash
 # Build the sandbox image once
 docker build -t revv-sandbox -f .revv/Dockerfile .
@@ -26,9 +36,6 @@ docker build -t revv-sandbox -f .revv/Dockerfile .
 # For each test.md with ## Commands, run in its own container:
 docker run --rm revv-sandbox sh -c "<commands from test.md>"
 ```
-
-Discover tests by finding all `.revv/<category>/<name>/test.md` files,
-extract the `## Commands` code block, and run each one in a fresh container.
 
 ### 3. Execute manual/browser tests (tests with `## Steps`)
 
