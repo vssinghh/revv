@@ -1,6 +1,6 @@
 ---
 name: revv-run
-description: Execute all revv QA tests for the current repository. First runs revv-update to check if new tests are needed, then executes automated tests in Docker containers and manual tests via browser automation. Analyzes failures and reports coverage gaps. Trigger on 'revv run', 'run tests', 'test this', 'run revv', 'test my changes'.
+description: Execute all revv QA tests for the current repository. First runs revv-update to check if new tests are needed, then executes automated tests via the revv binary and manual tests via browser automation. Analyzes failures and reports coverage gaps. Trigger on 'revv run', 'run tests', 'test this', 'run revv', 'test my changes'.
 ---
 
 ## What to do
@@ -11,19 +11,29 @@ Check if the current changes need new or updated tests. If `.revv/` doesn't exis
 
 ### 2. Execute automated tests (tests with `## Commands`)
 
-Find all `.revv/<category>/<name>/test.md` files that have a `## Commands` section.
+These are deterministic shell commands — no LLM needed. Use the `revv exec` binary for fast, parallel execution.
 
+**Ensure the binary is available:**
 ```bash
-# Build the sandbox image once
-docker build -t revv-sandbox -f .revv/Dockerfile .
-
-# For each test.md with ## Commands, run in its own container:
-docker run --rm revv-sandbox sh -c "<commands from test.md>"
+which revv || go build -o /tmp/revv ./cmd/revv
 ```
 
-For each test, extract the shell commands from the `## Commands` code block and run them inside a fresh container. Report pass (exit 0) or fail (non-zero exit).
+**Run all automated tests:**
+```bash
+revv exec --verbose
+# or if built to /tmp:
+/tmp/revv exec --verbose
+```
 
-### 3. Execute manual/browser tests (tests with `## Steps`)
+The binary:
+- Builds the Docker image from `.revv/Dockerfile` (once, cached)
+- Runs each test in a fresh container (parallel, worker pool)
+- Collects results with exit codes and output
+- Supports `--json` for structured output
+
+### 3. Execute browser tests (tests with `## Steps`)
+
+These require intelligence — the binary skips them. You handle them directly.
 
 For each test that has `## Steps` instead of `## Commands`:
 
@@ -48,7 +58,7 @@ e. **If browser tools are not available**, print the steps for the developer to 
 
 ### 4. Summarize results
 
-Report all results to the developer:
+Combine results from both the binary (automated) and browser tests:
 - Which tests passed/failed
 - Total duration
 - Blocking vs warning status
@@ -72,16 +82,16 @@ If the current changes introduce code that isn't covered by any test, tell the d
 
 User says "revv run". The assistant:
 1. Runs revv-update (finds 1 new test needed for a --timeout flag change)
-2. Builds Docker image from `.revv/Dockerfile`
-3. Runs each test in a fresh container
-4. Gets: 2 passed, 1 failed
-5. Analyzes the failure: "cli_sanity/timeout_flag failed because --timeout expects '5m' not '300'"
+2. Builds the binary: `go build -o /tmp/revv ./cmd/revv`
+3. Runs `/tmp/revv exec --verbose`
+4. Gets: 2 passed, 1 failed (parallel, fast)
+5. Analyzes the failure: "timeout_flag failed because --timeout expects '5m' not '300'"
 6. Suggests the fix
 
 ### Browser test flow
 
 User says "revv run". The assistant:
-1. Runs automated tests via Docker (all pass)
+1. Runs automated tests via binary (all pass)
 2. Finds manual/login_flow test with `## Steps`
 3. Runs `## Setup` to start the app
 4. Opens browser, navigates to localhost:3000

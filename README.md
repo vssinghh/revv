@@ -129,14 +129,24 @@ A test.md with `## Steps` is executed by the IDE's browser automation:
 
 ## Architecture
 
-revv is just two skills and a convention:
+```
+IDE Skill (the brain)
+│
+├── "revv update"  → LLM generates/updates .revv/ tests
+│
+├── "revv run"
+│   ├── Automated tests → binary (fast, parallel Docker containers)
+│   ├── Browser tests   → IDE directly (Chrome DevTools MCP)
+│   └── Analyze results → LLM explains failures, suggests fixes
+```
 
-| Skill | What it does |
-|-------|-------------|
-| [`revv-update`](skills/revv-update/SKILL.md) | Reads codebase + changes → generates/updates `.revv/` tests |
-| [`revv-run`](skills/revv-run/SKILL.md) | Runs update → executes Docker tests → runs browser tests → analyzes failures |
+| Component | What | Why |
+|-----------|------|-----|
+| [`revv-update`](skills/revv-update/SKILL.md) | Generates `.revv/` tests | Needs LLM to understand code |
+| [`revv-run`](skills/revv-run/SKILL.md) | Orchestrates test execution | Needs LLM for browser tests + analysis |
+| `revv exec` (Go binary) | Parallel Docker test runner | Fast, no LLM needed, self-builds from source |
 
-Skills are fetched by the IDE from this repo via the `AGENTS.md` pointer. No binary, no install.
+Skills are fetched by the IDE from this repo via the `AGENTS.md` pointer. The binary is built from source automatically — no install.
 
 ## FAQ
 
