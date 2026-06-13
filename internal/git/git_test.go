@@ -3,26 +3,24 @@ package git
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 )
 
-func TestPrepareBranchAndCommit(t *testing.T) {
-	// Create a temporary directory
+func TestGetCurrentBranch(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "revv_git_test")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Initialize git repo in the temp dir
+	// Initialize git repo
 	cmdInit := exec.Command("git", "init")
 	cmdInit.Dir = tempDir
 	if err := cmdInit.Run(); err != nil {
 		t.Fatalf("failed to initialize git repo: %v", err)
 	}
 
-	// Configure git user info for local commit to work in temp repository
+	// Configure git user
 	cmdUser := exec.Command("git", "config", "user.name", "Test User")
 	cmdUser.Dir = tempDir
 	_ = cmdUser.Run()
@@ -30,61 +28,24 @@ func TestPrepareBranchAndCommit(t *testing.T) {
 	cmdEmail.Dir = tempDir
 	_ = cmdEmail.Run()
 
-	// Ensure we have a default initial commit
-	testFile := "initial.txt"
-	err = os.WriteFile(filepath.Join(tempDir, testFile), []byte("initial content"), 0644)
-	if err != nil {
-		t.Fatalf("failed to write test file: %v", err)
+	// Create initial commit so branch exists
+	if err := os.WriteFile(tempDir+"/test.txt", []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
 	}
-
-	cmdAdd := exec.Command("git", "add", testFile)
+	cmdAdd := exec.Command("git", "add", ".")
 	cmdAdd.Dir = tempDir
 	_ = cmdAdd.Run()
-
-	cmdCommit := exec.Command("git", "commit", "-m", "Initial commit")
+	cmdCommit := exec.Command("git", "commit", "-m", "init")
 	cmdCommit.Dir = tempDir
 	_ = cmdCommit.Run()
 
-	// Now write a new file to prepare and commit
-	fileToCommit := "file1.txt"
-	err = os.WriteFile(filepath.Join(tempDir, fileToCommit), []byte("hello world"), 0644)
+	branch, err := GetCurrentBranch(tempDir)
 	if err != nil {
-		t.Fatalf("failed to write file to commit: %v", err)
+		t.Fatalf("GetCurrentBranch failed: %v", err)
 	}
 
-	// Call the function under test
-	err = PrepareBranchAndCommit(tempDir, []string{fileToCommit})
-	if err != nil {
-		t.Fatalf("PrepareBranchAndCommit failed: %v", err)
-	}
-
-	// Verify we are on the correct branch
-	cmdBranch := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmdBranch.Dir = tempDir
-	out, err := cmdBranch.Output()
-	if err != nil {
-		t.Fatalf("failed to get current branch: %v", err)
-	}
-
-	branchName := string(out)
-	// Remove newline
-	if len(branchName) > 0 && branchName[len(branchName)-1] == '\n' {
-		branchName = branchName[:len(branchName)-1]
-	}
-
-	if branchName != "revv/init" {
-		t.Errorf("expected branch 'revv/init', got %q", branchName)
-	}
-
-	// Verify the file was committed
-	cmdLog := exec.Command("git", "log", "-n", "1", "--pretty=format:%s")
-	cmdLog.Dir = tempDir
-	logOut, err := cmdLog.Output()
-	if err != nil {
-		t.Fatalf("failed to get git log: %v", err)
-	}
-
-	if string(logOut) != "Initialize revv configuration" {
-		t.Errorf("expected commit message 'Initialize revv configuration', got %q", string(logOut))
+	// Default branch is usually "main" or "master"
+	if branch != "main" && branch != "master" {
+		t.Errorf("expected 'main' or 'master', got %q", branch)
 	}
 }

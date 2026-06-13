@@ -16,8 +16,15 @@ var (
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "revv",
-		Short: "LLM-powered PR review automation tool",
-		Long:  `revv is an LLM-powered PR review automation tool for open-source maintainers.`,
+		Short: "Docker test executor for .revv/ configurations",
+		Long: `revv executes tests defined in .revv/ inside isolated Docker containers.
+
+Use your IDE (Antigravity, Claude Code, Cursor) to generate and update
+test configurations. revv handles the execution.
+
+  IDE:   "revv update"  →  generates .revv/ tests
+  IDE:   "revv run"     →  updates tests, then runs revv exec
+  CLI:   revv exec      →  executes tests in Docker`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -25,8 +32,7 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 	rootCmd.PersistentFlags().Duration("timeout", 5*time.Minute, "Maximum execution timeout")
 
-	rootCmd.AddCommand(newInitCmd())
-	rootCmd.AddCommand(newRunCmd())
+	rootCmd.AddCommand(newExecCmd())
 	rootCmd.AddCommand(newVersionCmd())
 
 	return rootCmd
