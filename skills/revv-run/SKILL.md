@@ -9,7 +9,7 @@ description: Execute all revv QA tests for the current repository. First runs re
 
 Check if the current changes need new or updated tests. If `.revv/` doesn't exist at all, generate it from scratch using the `revv-update` skill.
 
-### 2. Execute automated tests (tests with `## Commands`)
+### 2. Execute automated tests (find all tests where `## Type` is `automated`)
 
 These are deterministic shell commands — no LLM needed. Use the `revv exec` binary for fast, parallel execution.
 
@@ -31,7 +31,7 @@ The binary:
 - Collects results with exit codes and output
 - Supports `--json` for structured output
 
-### 3. Execute browser tests (tests with `## Steps`)
+### 3. Execute browser tests (find all tests where `## Type` is `browser`)
 
 These require intelligence — the binary skips them. You handle them directly.
 
@@ -55,6 +55,10 @@ c. **Follow each step literally:**
 d. **Report results** with screenshots for visual verification.
 
 e. **If browser tools are not available**, print the steps for the developer to execute manually and mark the test as "manual - needs human verification".
+
+### 3.5 Manual tests (`## Type` is `manual`)
+
+Tests with `## Type` set to `manual` are **not** executed automatically. Print their `## Description` and `## Steps` for the developer to verify by hand, and mark them as "manual — needs human verification" in the results summary.
 
 ### 4. Summarize results
 

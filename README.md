@@ -88,6 +88,9 @@ A test.md with `## Commands` runs inside a Docker container:
 > **## Priority**
 > `blocking`
 >
+> **## Type**
+> `automated`
+>
 > **## Commands**
 > ```bash
 > make build
@@ -107,6 +110,9 @@ A test.md with `## Steps` is executed by the IDE's browser automation:
 >
 > **## Priority**
 > `blocking`
+>
+> **## Type**
+> `browser`
 >
 > **## Setup**
 > ```bash

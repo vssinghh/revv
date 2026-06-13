@@ -8,6 +8,7 @@ import (
 type ParsedTest struct {
 	Description string
 	Priority    string // "blocking" or "warning"
+	Type        string // "automated", "browser", or "manual"
 	Commands    string // shell commands to execute
 	Expected    string // expected output description
 	NoCommands  bool   // true if test has no executable commands
@@ -42,7 +43,20 @@ func ParseTestMD(content string) (*ParsedTest, error) {
 		pt.Expected = strings.TrimSpace(exp)
 	}
 
-	pt.NoCommands = pt.Commands == ""
+	if typ, ok := sections["type"]; ok {
+		pt.Type = normalizeType(strings.TrimSpace(strings.ToLower(typ)))
+	}
+	if pt.Type == "" {
+		// Infer type from content: if it has Commands, it's automated
+		if pt.Commands != "" {
+			pt.Type = "automated"
+		} else {
+			pt.Type = "manual"
+		}
+	}
+
+	// Binary only runs automated tests
+	pt.NoCommands = pt.Commands == "" || pt.Type != "automated"
 
 	return pt, nil
 }
@@ -56,6 +70,20 @@ func normalizePriority(raw string) string {
 		return "warning"
 	default:
 		return "warning"
+	}
+}
+
+// normalizeType maps test type values to "automated", "browser", or "manual".
+func normalizeType(raw string) string {
+	switch raw {
+	case "automated", "auto", "docker", "command", "commands":
+		return "automated"
+	case "browser", "ui", "e2e", "visual":
+		return "browser"
+	case "manual", "human", "steps":
+		return "manual"
+	default:
+		return "automated"
 	}
 }
 

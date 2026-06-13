@@ -55,6 +55,9 @@ What this test verifies and why it matters.
 ## Priority
 blocking | warning
 
+## Type
+automated
+
 ## Commands
 ```bash
 # Real, executable shell commands. NOT pseudocode.
@@ -74,6 +77,9 @@ Verify the login flow works end-to-end.
 
 ## Priority
 blocking
+
+## Type
+browser
 
 ## Setup
 ```bash
@@ -111,7 +117,8 @@ No console errors. All elements render correctly.
 
 ## Rules
 
-- Every test.md MUST have: `## Description`, `## Priority`, `## Commands` (or `## Steps` for manual), `## Expected Output`
+- Every test.md MUST have: `## Description`, `## Priority`, `## Type`, `## Commands` (or `## Steps` for manual/browser), `## Expected Output`
+- Type is one of: `automated` (runs in Docker via binary), `browser` (runs via IDE's Chrome DevTools), `manual` (human steps, printed for verification)
 - Commands must be REAL shell commands that work inside the Docker container
 - Priority is either `blocking` (merge-gating) or `warning` (advisory)
 - Do NOT use mock modes, test doubles, or fake backends
