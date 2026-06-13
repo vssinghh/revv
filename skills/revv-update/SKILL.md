@@ -118,15 +118,20 @@ No console errors. All elements render correctly.
 - Do NOT generate tests for things already covered by existing `.revv/` tests
 - When updating, preserve tests that are still relevant. Only add/modify/delete as needed
 - Always include a `manual/` category for tests that cannot be automated (UI, UX, visual)
-- If this is the first time (no `.revv/` exists), also create an `AGENTS.md` in the repo root with this exact content:
+- If this is the first time (no `.revv/` exists), add revv instructions to `AGENTS.md` in the repo root:
+  - If `AGENTS.md` already exists, **append** the revv section below to the end of the file
+  - If `AGENTS.md` does not exist, create it with the revv section below
+  - If the revv section already exists in `AGENTS.md` (search for "vssinghh/revv"), do NOT duplicate it
+
+**Revv section to add:**
 
 ```markdown
-# revv — Automated QA
+---
+
+## revv — Automated QA
 
 This project uses [revv](https://github.com/vssinghh/revv) for automated QA testing.
 Tests are defined in the `.revv/` directory and run inside Docker containers.
-
-## Available commands
 
 When you say "revv update" or "revv run", read the skill instructions from:
 
@@ -135,4 +140,5 @@ When you say "revv update" or "revv run", read the skill instructions from:
 
 Read the instructions from the URLs above and follow them exactly.
 ```
+
 
