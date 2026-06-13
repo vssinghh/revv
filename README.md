@@ -73,34 +73,6 @@ The contributor's IDE:
 5. Runs browser-based tests via Chrome DevTools
 6. Analyzes any failures and suggests fixes
 
-### CI Integration
-
-For GitHub Actions, use `revv exec` (the optional Go binary):
-
-```yaml
-name: revv
-on: [pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - run: go install github.com/vssinghh/revv/cmd/revv@latest
-      - run: revv exec --json
-```
-
-Or without Go — use the `revv exec` self-build:
-
-```yaml
-      - run: docker build -t revv-sandbox -f .revv/Dockerfile .
-      - run: |
-          # Build revv from source and run
-          go build -o /tmp/revv github.com/vssinghh/revv/cmd/revv
-          /tmp/revv exec --json
-```
 
 ## Test Format
 
@@ -205,7 +177,7 @@ No. It's a pointer that fetches the latest instructions from this repo every tim
 Any IDE with an LLM that reads `AGENTS.md` — Antigravity, Codex, Claude Code, Cursor.
 
 **What about CI?**
-Use `revv exec` (Go binary) or raw Docker commands. No LLM needed in CI.
+revv is IDE-first. Your existing CI (`go test`, `npm test`) handles CI. revv handles the QA that CI can't — browser tests, visual checks, and intelligent failure analysis.
 
 ## License
 
