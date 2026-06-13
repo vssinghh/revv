@@ -126,19 +126,27 @@ User says: "revv run", "run tests", "test this", "run revv"
 
 1. **First, run the "revv update" skill** to check if the current changes need new or updated tests. If `.revv/` doesn't exist at all, generate it from scratch.
 
-2. **Execute automated tests** (tests with `## Commands`) by running:
+2. **Execute automated tests** (tests with `## Commands`):
+
+   **If `revv exec` is installed** (preferred — parallel, fast):
    ```bash
    revv exec --verbose
    ```
    Or with filters:
    ```bash
    revv exec --category unit --verbose
-   revv exec --test build/compile_check --verbose
    ```
-   Or for machine-readable output:
+
+   **If `revv exec` is NOT installed** (fallback — sequential):
    ```bash
-   revv exec --json
+   # Build the sandbox image once
+   docker build -t revv-sandbox -f .revv/Dockerfile .
+
+   # Run each test in its own container
+   docker run --rm revv-sandbox sh -c "<commands from test.md>"
    ```
+   Discover tests by finding all `.revv/<category>/<name>/test.md` files,
+   extract the `## Commands` code block, and run each one.
 
 3. **Execute manual/browser tests** (tests with `## Steps`):
 
