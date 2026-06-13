@@ -13,22 +13,6 @@ Check if the current changes need new or updated tests. If `.revv/` doesn't exis
 
 Find all `.revv/<category>/<name>/test.md` files that have a `## Commands` section.
 
-**Step A: Ensure `revv exec` is available**
-```bash
-# Check if already available
-which revv
-
-# If not found, build from source (the code is in this repo)
-go build -o /tmp/revv ./cmd/revv
-# Then use /tmp/revv exec --verbose
-```
-
-**Step B: Run the tests**
-```bash
-revv exec --verbose
-```
-
-**If Go is also not installed** (final fallback — raw docker):
 ```bash
 # Build the sandbox image once
 docker build -t revv-sandbox -f .revv/Dockerfile .
@@ -36,6 +20,8 @@ docker build -t revv-sandbox -f .revv/Dockerfile .
 # For each test.md with ## Commands, run in its own container:
 docker run --rm revv-sandbox sh -c "<commands from test.md>"
 ```
+
+For each test, extract the shell commands from the `## Commands` code block and run them inside a fresh container. Report pass (exit 0) or fail (non-zero exit).
 
 ### 3. Execute manual/browser tests (tests with `## Steps`)
 
@@ -86,19 +72,19 @@ If the current changes introduce code that isn't covered by any test, tell the d
 
 User says "revv run". The assistant:
 1. Runs revv-update (finds 1 new test needed for a --timeout flag change)
-2. Runs `revv exec --verbose`
-3. Gets: 2 passed, 1 failed
-4. Analyzes the failure: "cli_sanity/timeout_flag failed because --timeout expects '5m' not '300'"
-5. Suggests the fix
+2. Builds Docker image from `.revv/Dockerfile`
+3. Runs each test in a fresh container
+4. Gets: 2 passed, 1 failed
+5. Analyzes the failure: "cli_sanity/timeout_flag failed because --timeout expects '5m' not '300'"
+6. Suggests the fix
 
 ### Browser test flow
 
 User says "revv run". The assistant:
-1. Runs automated tests via `revv exec` (all pass)
+1. Runs automated tests via Docker (all pass)
 2. Finds manual/login_flow test with `## Steps`
 3. Runs `## Setup` to start the app
 4. Opens browser, navigates to localhost:3000
 5. Clicks Login, fills credentials, submits
 6. Verifies "Welcome" text appears
 7. Takes screenshot, reports pass
-

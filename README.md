@@ -129,38 +129,14 @@ A test.md with `## Steps` is executed by the IDE's browser automation:
 
 ## Architecture
 
-revv has two components:
-
-### Skills (the brain)
+revv is just two skills and a convention:
 
 | Skill | What it does |
 |-------|-------------|
-| `revv-update` | Reads codebase + changes → generates/updates `.revv/` tests |
-| `revv-run` | Runs update → executes Docker tests → runs browser tests → analyzes failures |
+| [`revv-update`](skills/revv-update/SKILL.md) | Reads codebase + changes → generates/updates `.revv/` tests |
+| [`revv-run`](skills/revv-run/SKILL.md) | Runs update → executes Docker tests → runs browser tests → analyzes failures |
 
-Skills live in [`skills/`](skills/) and are fetched by the IDE from this repo via `AGENTS.md`.
-
-### Binary (optional accelerator)
-
-```
-revv exec [flags]
-  --verbose     Show detailed output
-  --json        Output results as JSON
-  --category    Run only a specific category
-  --test        Run a single test by path
-  --timeout     Global timeout (default: 5m)
-```
-
-The binary runs tests in parallel Docker containers. It's optional — the skill can build it from source (`go build ./cmd/revv`) or fall back to raw `docker run` commands.
-
-```
-cmd/revv/          ← binary entrypoint
-internal/
-├── cli/           ← cobra commands (exec, version)
-├── runner/        ← test discovery, parsing, parallel execution
-├── sandbox/       ← Docker container lifecycle (Colima auto-install)
-└── git/           ← git utilities
-```
+Skills are fetched by the IDE from this repo via the `AGENTS.md` pointer. No binary, no install.
 
 ## FAQ
 
@@ -175,9 +151,6 @@ No. It's a pointer that fetches the latest instructions from this repo every tim
 
 **What IDEs are supported?**
 Any IDE with an LLM that reads `AGENTS.md` — Antigravity, Codex, Claude Code, Cursor.
-
-**What about CI?**
-revv is IDE-first. Your existing CI (`go test`, `npm test`) handles CI. revv handles the QA that CI can't — browser tests, visual checks, and intelligent failure analysis.
 
 ## License
 
